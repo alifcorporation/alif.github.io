@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alif Group | Tiny CMS</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --sub: #94a3b8;
+      --primary: #2563eb;
+      --success: #10b981;
+      --error: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 40px 20px; display: flex; justify-content: center; }
+    .cms-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 30px; max-width: 600px; width: 100%; }
+    h1 { font-size: 1.8rem; margin-bottom: 20px; color: #38bdf8; text-align: center; }
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-size: 0.9rem; color: var(--sub); margin-bottom: 6px; font-weight: 600; }
+    input, textarea { width: 100%; padding: 10px 14px; background: #0f172a; border: 1px solid var(--border); border-radius: 6px; color: #fff; font-size: 0.95rem; }
+    input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+    textarea { resize: vertical; height: 80px; }
+    .btn { width: 100%; padding: 12px; background: var(--primary); color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-top: 10px; }
+    .btn:hover { opacity: 0.9; }
+    #status { margin-top: 15px; text-align: center; font-weight: 600; font-size: 0.9rem; padding: 10px; border-radius: 6px; display: none; }
+    .status-success { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+    .status-error { background: rgba(239, 68, 68, 0.2); color: var(--error); }
+  </style>
+</head>
+<body>
+
+  <div class="cms-card">
+    <h1>Alif CMS Admin</h1>
+
+    <div class="form-group">
+      <label for="gh-token">GitHub Fine-Grained Personal Access Token</label>
+      <input type="password" id="gh-token" placeholder="github_pat_11A...">
+    </div>
+
+    <hr style="border-color: var(--border); margin: 20px 0;">
+
+    <div class="form-group">
+      <label for="siteTitle">Site Title</label>
+      <input type="text" id="siteTitle" placeholder="Alif Group Portal">
+    </div>
+
+    <div class="form-group">
+      <label for="siteTagline">Site Tagline</label>
+      <input type="text" id="siteTagline" placeholder="Connecting Business Excellence & Digital Innovation">
+    </div>
+
+    <div class="form-group">
+      <label for="corpDesc">Alif Corporation Description</label>
+      <textarea id="corpDesc" placeholder="Official B2B, B2G supply portal..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="netDesc">Alif Network Description</label>
+      <textarea id="netDesc" placeholder="Web development and IT services..."></textarea>
+    </div>
+
+    <button class="btn" onclick="saveData()">Save & Publish to alif.name</button>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const owner = "alifcorporation";
+    const repo = "alifcorporation.github.io";
+    const path = "data.json";
+
+    // Saved Token auto-load
+    if (localStorage.getItem("gh_pat")) {
+      document.getElementById("gh-token").value = localStorage.getItem("gh_pat");
+    }
+
+    // Load existing data.json
+    fetch("../data.json?v=" + Date.now())
+      .then(res => res.json())
+      .then(data => {
+        if(data.siteTitle) document.getElementById("siteTitle").value = data.siteTitle;
+        if(data.siteTagline) document.getElementById("siteTagline").value = data.siteTagline;
+        if(data.corpDesc) document.getElementById("corpDesc").value = data.corpDesc;
+        if(data.netDesc) document.getElementById("netDesc").value = data.netDesc;
+      })
+      .catch(() => console.log("New data setup"));
+
+    async function saveData() {
+      const token = document.getElementById("gh-token").value.trim();
+      const statusDiv = document.getElementById("status");
+      statusDiv.style.display = "block";
+      statusDiv.className = "";
+      statusDiv.innerText = "Publishing updates to GitHub...";
+
+      if (!token) {
+        statusDiv.className = "status-error";
+        statusDiv.innerText = "Error: Please enter your GitHub Personal Access Token!";
+        return;
+      }
+
+      localStorage.setItem("gh_pat", token);
+
+      const content = {
+        siteTitle: document.getElementById("siteTitle").value,
+        siteTagline: document.getElementById("siteTagline").value,
+        corpDesc: document.getElementById("corpDesc").value,
+        netDesc: document.getElementById("netDesc").value
+      };
+
+      try {
+        // Step 1: Get file SHA
+        const getUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+        let sha = "";
+        const getRes = await fetch(getUrl, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (getRes.ok) {
+          const getData = await getRes.json();
+          sha = getData.sha;
+        }
+
+        // Step 2: Commit updated JSON via GitHub API
+        const utf8Bytes = new TextEncoder().encode(JSON.stringify(content, null, 2));
+        let binaryStr = "";
+        utf8Bytes.forEach(b => binaryStr += String.fromCharCode(b));
+        const base64Content = btoa(binaryStr);
+
+        const putRes = await fetch(getUrl, {
+          method: "PUT",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: "Update site configuration via Tiny CMS",
+            content: base64Content,
+            sha: sha || undefined
+          })
+        });
+
+        if (putRes.ok) {
+          statusDiv.className = "status-success";
+          statusDiv.innerText = "✔ Success! Updates published. Site will refresh in 1-2 minutes.";
+        } else {
+          const errData = await putRes.json();
+          throw new Error(errData.message || "GitHub API Error");
+        }
+      } catch (err) {
+        statusDiv.className = "status-error";
+        statusDiv.innerText = "Failed: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
