@@ -91,7 +91,8 @@
       .catch(() => console.log("New data setup"));
 
     async function saveData() {
-      const token = document.getElementById("gh-token").value.trim();
+      const tokenInput = document.getElementById("gh-token");
+      const token = tokenInput ? tokenInput.value.trim() : "";
       const statusDiv = document.getElementById("status");
       statusDiv.style.display = "block";
       statusDiv.className = "";
