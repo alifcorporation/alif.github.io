@@ -70,93 +70,145 @@
   </div>
 
   <script>
-    const owner = "alifcorporation";
-    const repo = "alif.github.io";
-    const path = "data.json";
+  const owner = "alifcorporation";
+  const repo = "alif.github.io";
+  const path = "data.json";
 
-    // Saved Token auto-load
-    if (localStorage.getItem("gh_pat")) {
-      document.getElementById("gh-token").value = localStorage.getItem("gh_pat");
+  const tokenInput = document.getElementById("gh-token");
+
+  // Load saved token
+  const savedToken = localStorage.getItem("gh_pat");
+  if (savedToken) {
+    tokenInput.value = savedToken;
+  }
+
+  // Load existing data.json
+  fetch("/data.json?v=" + Date.now())
+    .then(res => {
+      if (!res.ok) throw new Error("data.json not found");
+      return res.json();
+    })
+    .then(data => {
+      if (data.siteTitle)
+        document.getElementById("siteTitle").value = data.siteTitle;
+
+      if (data.siteTagline)
+        document.getElementById("siteTagline").value = data.siteTagline;
+
+      if (data.corpDesc)
+        document.getElementById("corpDesc").value = data.corpDesc;
+
+      if (data.netDesc)
+        document.getElementById("netDesc").value = data.netDesc;
+    })
+    .catch(err => {
+      console.log("Could not load data.json:", err.message);
+    });
+
+  async function saveData() {
+
+    const token = tokenInput.value.trim();
+    const statusDiv = document.getElementById("status");
+
+    statusDiv.style.display = "block";
+    statusDiv.className = "";
+    statusDiv.innerText = "Publishing updates to GitHub...";
+
+    if (!token) {
+      statusDiv.className = "status-error";
+      statusDiv.innerText = "Error: Please enter your GitHub Personal Access Token!";
+      return;
     }
 
-    // Load existing data.json
-    fetch("../data.json?v=" + Date.now())
-      .then(res => res.json())
-      .then(data => {
-        if(data.siteTitle) document.getElementById("siteTitle").value = data.siteTitle;
-        if(data.siteTagline) document.getElementById("siteTagline").value = data.siteTagline;
-        if(data.corpDesc) document.getElementById("corpDesc").value = data.corpDesc;
-        if(data.netDesc) document.getElementById("netDesc").value = data.netDesc;
-      })
-      .catch(() => console.log("New data setup"));
+    localStorage.setItem("gh_pat", token);
 
-    async function saveData() {
-      const tokenInput = document.getElementById("gh-token");
-      const token = tokenInput ? tokenInput.value.trim() : "";
-      const statusDiv = document.getElementById("status");
-      statusDiv.style.display = "block";
-      statusDiv.className = "";
-      statusDiv.innerText = "Publishing updates to GitHub...";
+    const content = {
+      siteTitle: document.getElementById("siteTitle").value,
+      siteTagline: document.getElementById("siteTagline").value,
+      corpDesc: document.getElementById("corpDesc").value,
+      netDesc: document.getElementById("netDesc").value
+    };
 
-      if (!token) {
-        statusDiv.className = "status-error";
-        statusDiv.innerText = "Error: Please enter your GitHub Personal Access Token!";
-        return;
+    const getUrl =
+      `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+
+    try {
+
+      // Get current file SHA
+      const getRes = await fetch(getUrl, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        }
+      });
+
+      let sha = "";
+
+      if (getRes.ok) {
+        const getData = await getRes.json();
+        sha = getData.sha;
+      } else if (getRes.status !== 404) {
+        const errorData = await getRes.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `GitHub GET error: ${getRes.status}`
+        );
       }
 
-      localStorage.setItem("gh_pat", token);
+      // Convert JSON to Base64
+      const jsonText = JSON.stringify(content, null, 2);
 
-      const content = {
-        siteTitle: document.getElementById("siteTitle").value,
-        siteTagline: document.getElementById("siteTagline").value,
-        corpDesc: document.getElementById("corpDesc").value,
-        netDesc: document.getElementById("netDesc").value
+      const utf8Bytes = new TextEncoder().encode(jsonText);
+
+      let binary = "";
+      for (const byte of utf8Bytes) {
+        binary += String.fromCharCode(byte);
+      }
+
+      const base64Content = btoa(binary);
+
+      // Create/update data.json
+      const body = {
+        message: "Update site configuration via Tiny CMS",
+        content: base64Content
       };
 
-      try {
-        // Step 1: Get file SHA
-        const getUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-        let sha = "";
-        const getRes = await fetch(getUrl, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-
-        if (getRes.ok) {
-          const getData = await getRes.json();
-          sha = getData.sha;
-        }
-
-        // Step 2: Commit updated JSON via GitHub API
-        const utf8Bytes = new TextEncoder().encode(JSON.stringify(content, null, 2));
-        let binaryStr = "";
-        utf8Bytes.forEach(b => binaryStr += String.fromCharCode(b));
-        const base64Content = btoa(binaryStr);
-
-        const putRes = await fetch(getUrl, {
-          method: "PUT",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            message: "Update site configuration via Tiny CMS",
-            content: base64Content,
-            sha: sha || undefined
-          })
-        });
-
-        if (putRes.ok) {
-          statusDiv.className = "status-success";
-          statusDiv.innerText = "✔ Success! Updates published. Site will refresh in 1-2 minutes.";
-        } else {
-          const errData = await putRes.json();
-          throw new Error(errData.message || "GitHub API Error");
-        }
-      } catch (err) {
-        statusDiv.className = "status-error";
-        statusDiv.innerText = "Failed: " + err.message;
+      if (sha) {
+        body.sha = sha;
       }
+
+      const putRes = await fetch(getUrl, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/vnd.github+json",
+          "Content-Type": "application/json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
+        body: JSON.stringify(body)
+      });
+
+      const result = await putRes.json();
+
+      if (!putRes.ok) {
+        throw new Error(
+          result.message || `GitHub PUT error: ${putRes.status}`
+        );
+      }
+
+      statusDiv.className = "status-success";
+      statusDiv.innerText =
+        "✔ Successfully published to GitHub.";
+
+    } catch (err) {
+
+      statusDiv.className = "status-error";
+      statusDiv.innerText = "Failed: " + err.message;
+
+      console.error("GitHub API error:", err);
     }
-  </script>
+  }
+</script>
 </body>
 </html>
