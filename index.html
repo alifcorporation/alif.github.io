@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alif Group | Official Portal</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --accent-corp: #2563eb;
+      --accent-net: #10b981;
+      --border-color: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 10px;
+      background: linear-gradient(to right, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.tagline {
+      font-size: 1.2rem;
+      color: var(--text-sub);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 25px;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-title {
+      font-size: 1.6rem;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title.corp { color: #60a5fa; }
+    .card-title.net { color: #34d399; }
+
+    .card-desc {
+      color: var(--text-sub);
+      line-height: 1.6;
+      font-size: 1rem;
+      margin-bottom: 25px;
+    }
+
+    .btn {
+      display: inline-block;
+      text-align: center;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      color: #ffffff;
+      transition: opacity 0.2s ease;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .btn-corp { background-color: var(--accent-corp); }
+    .btn-net { background-color: var(--accent-net); }
+
+    footer {
+      margin-top: 50px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+
+    footer a {
+      color: var(--text-sub);
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1 id="site-title">Alif Group Portal</h1>
+      <p class="tagline" id="site-tagline">Connecting Business Excellence & Digital Innovation</p>
+    </header>
+
+    <div class="grid">
+      <!-- Section 1: Alif Corporation -->
+      <div class="card">
+        <div>
+          <h2 class="card-title corp">Alif Corporation</h2>
+          <p class="card-desc" id="corp-desc">Official B2B, B2G supply, enterprise management, trade registrations, and corporate services portal.</p>
+        </div>
+        <a href="https://alifcorporation.co.in" target="_blank" class="btn btn-corp">Visit alifcorporation.co.in &rarr;</a>
+      </div>
+
+      <!-- Section 2: Alif Network -->
+      <div class="card">
+        <div>
+          <h2 class="card-title net">Alif Network</h2>
+          <p class="card-desc" id="net-desc">Web development, software automation, custom PHP/API solutions, and cloud infrastructure.</p>
+        </div>
+        <a href="https://alif.net.in" target="_blank" class="btn btn-net">Visit alif.net.in &rarr;</a>
+      </div>
+    </div>
+
+    <footer>
+      <p>&copy; Alif Group. All rights reserved. | <a href="/cms/">CMS Admin Panel</a></p>
+    </footer>
+  </div>
+
+  <script>
+    // Local JSON fetch with cache-busting timestamp
+    fetch('./data.json?v=' + new Date().getTime())
+      .then(response => {
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.json();
+      })
+      .then(data => {
+        if (data.siteTitle) document.getElementById('site-title').innerText = data.siteTitle;
+        if (data.siteTagline) document.getElementById('site-tagline').innerText = data.siteTagline;
+        if (data.corpDesc) document.getElementById('corp-desc').innerText = data.corpDesc;
+        if (data.netDesc) document.getElementById('net-desc').innerText = data.netDesc;
+      })
+      .catch(err => {
+        console.log("Serving built-in HTML static fallback content.");
+      });
+  </script>
+
+</body>
+</html>
